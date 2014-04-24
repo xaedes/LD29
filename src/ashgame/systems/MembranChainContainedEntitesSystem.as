@@ -1,0 +1,125 @@
+package ashgame.systems {
+	import ash.core.Entity;
+	import ash.tools.ListIteratingSystem;
+	import flash.utils.Dictionary;
+	import ashgame.components.AlphaTween;
+	import ashgame.components.Anchor;
+	import ashgame.components.CanBeContainedInMembranChains;
+	import ashgame.components.Display;
+	import ashgame.components.Lifetime;
+	import ashgame.components.Membran;
+	import ashgame.components.MembranChain;
+	import ashgame.components.Player;
+	import ashgame.components.Position;
+	import ashgame.components.Redrawing;
+	import ashgame.components.Timer;
+	import ashgame.EntityCreator;
+	import ashgame.etc.TraverseResult;
+	import ashgame.graphics.CircleView;
+	import ashgame.nodes.MembranChainContainedEntitesNode;
+	import ashgame.Utils;
+	
+	public class MembranChainContainedEntitesSystem extends ListIteratingSystem {
+		public var creator:EntityCreator;
+		
+		public function MembranChainContainedEntitesSystem(creator:EntityCreator) {
+			super(MembranChainContainedEntitesNode, updateNode);
+			this.creator = creator;
+		
+		}
+		
+		private function updateNode(node:MembranChainContainedEntitesNode, time:Number):void {
+			if (node.membranChain.circular == false) {
+				Utils.dictionaryClean(node.membranChain.containedEntities);
+				return;
+			}
+			var position:Position;
+			for (var obj:Object in node.collision.collidingEntities) {
+				var entity:Entity = Entity(obj);
+				//dont contain the membran parts
+				if (node.membranChain.partEntities[entity])
+					continue;
+				
+				if (entity.has(CanBeContainedInMembranChains)) {
+					var canBeContainedInMembranChains:CanBeContainedInMembranChains = CanBeContainedInMembranChains(entity.get(CanBeContainedInMembranChains));
+					if (entity.has(Position)) {
+						position = Position(entity.get(Position));
+						
+						// test if entity is contained in membran chain or not
+						//  - simplify to position of entity inside concave polygon build by membran part entity positions
+						// -> test position inside or outside of concave polygon
+						// use Ray casting algorithm (http://en.wikipedia.org/wiki/Point_in_polygon) for this
+						// cast ray along x-axis -> look for intersections in y-axis to find intersecting connections
+						// count intersections
+						// even number of intersections -> outside
+						// odd number of intersections -> inside
+						var intersections:int = 0;
+						var direction:int = -1;
+						var lastY:Number;
+						var lastX:Number;
+						var thisY:Number;
+						var thisX:Number;
+						lastX = Position(node.membranChainOrderedEntities.ordered[node.membranChainOrderedEntities.ordered.length - 1].get(Position)).position.x;
+						lastY = Position(node.membranChainOrderedEntities.ordered[node.membranChainOrderedEntities.ordered.length - 1].get(Position)).position.y;
+						for (var i:int = 0; i < node.membranChainOrderedEntities.ordered.length; i++) {
+							thisY = Position(node.membranChainOrderedEntities.ordered[i].get(Position)).position.y;
+							thisX = Position(node.membranChainOrderedEntities.ordered[i].get(Position)).position.x;
+							if ((position.position.y >= Math.min(lastY, thisY)) && (position.position.y <= Math.max(lastY, thisY))) {
+								// intersection
+								var intersectX:Number = lastX + (thisX - lastX) * (position.position.y - lastY) / (thisY - lastY);
+								if (direction == 0) {
+									if (intersectX >= position.position.x) {
+										direction = 1;
+									} else {
+										direction = -1;
+									}
+									intersections++;
+								} else {
+									if (direction == 1) {
+										if (intersectX >= position.position.x) {
+											intersections++;
+											
+										}
+									} else if (direction == -1) {
+										if (intersectX <= position.position.x) {
+											intersections++;
+										}
+									}
+								}
+							}
+							lastX = thisX;
+							lastY = thisY;
+						}
+						if ((intersections > 0) && (intersections % 2 == 1)) { // inside
+							if (!node.membranChain.containedEntities[entity]) {
+								node.membranChain.containedEntities[entity] = entity;
+								canBeContainedInMembranChains.addMembranChain(node.entity);
+									//var time:Number = 1;
+									////var circle:Entity = creator.createCircle(10, 0xBCE8FF, 0.6);
+									//var circle:Entity = creator.createCircle(10, 0xFF0000, 0.6);
+									//var display:Display = Display(circle.get(Display));
+									//var circlePosition:Position = Position(circle.get(Position));
+									//circlePosition.position.x = position.position.x;
+									//circlePosition.position.y = position.position.y;
+									//circle.add(new Anchor(entity));
+									//circle.add(new Lifetime(time));
+									//circle.add(new Timer());
+									//circle.add(new Redrawing(CircleView(display.displayObject)));
+									//circle.add(new AlphaTween(0, time));
+							}
+							
+						} else { // outside
+							if (node.membranChain.containedEntities[entity]) {
+								canBeContainedInMembranChains.removeMembranChain(node.entity);
+								delete node.membranChain.containedEntities[entity];
+							}
+						}
+						
+					}
+				}
+			}
+		
+		}
+	}
+
+}
