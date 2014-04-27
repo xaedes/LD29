@@ -17,6 +17,9 @@ package ashgame {
 		[Embed(source="../../assets/good_job.mp3")]
 		static public var GoodJob:Class;
 		
+		[Embed(source="../../assets/cave.png")]
+		static public var CavePNG:Class;
+		
 		public function Assets() {
 		}
 	

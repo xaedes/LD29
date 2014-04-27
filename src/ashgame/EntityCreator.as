@@ -76,6 +76,8 @@ package ashgame {
 	import ashgame.graphics.RectView;
 	import ashgame.graphics.Redrawable;
 	import ashgame.graphics.TextView;
+	import ashgame.graphics.SpriteView;
+	import ashgame.Assets;
 	
 	public class EntityCreator {
 		private var engine:Engine;
@@ -428,6 +430,21 @@ package ashgame {
 				add(new Collision());
 				add(new CircleCircleCollision());
 				add(new SpatialHashed());
+			}
+			
+			engine.addEntity(entity);
+			return entity;
+		}
+		
+		public function createCaveTile(x:Number = 0, y:Number = 0):Entity {
+			var entity:Entity = new Entity();
+			
+			var view:SpriteView = new SpriteView(Assets.CavePNG, 16, 16);
+			with (entity) {
+				add(new Position(x, y));
+				add(new Size(null, Size.ALIGN_CENTER_CENTER));
+				add(new Display(view));
+				add(new Redrawing(view));
 			}
 			
 			engine.addEntity(entity);
